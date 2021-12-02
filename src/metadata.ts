@@ -1,3 +1,5 @@
+import { Rune } from "./runes"
+
 const emptyMeta = {
     harvestYield: 0,
     pending: 0,
@@ -32,7 +34,7 @@ const emptyMeta = {
     harvestFeePercent: 0,
     worldstoneShardChance: 0,
     randomRuneExchange: 0,
-    harvestFees: {},
+    harvestFees: {} as {[k in Rune]: number},
   }
 
   export type ActionMetadata = typeof emptyMeta
