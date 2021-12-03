@@ -3,6 +3,7 @@ import { ClassIds } from "../classes";
 import { Percentage, RunewordDefinition } from "../data";
 import { ItemMod } from "../mods";
 import { Rune } from "../runes";
+import { ItemTypeID } from "../type";
 
 export const ItemsBonusType = {
     SWIMMING: 'swimming',
@@ -61,11 +62,11 @@ export type RunewordMeta = {
 export type Runeword = RunewordDefinition & {
     tokenId: string;
     shortTokenId: string;
-    shorthand: string;
+    shorthand: string | null;
     meta: RunewordMeta;
     mods: ItemMod[];
     version: number;
-    perfection: number;
+    perfection: number | null;
 }
 
 export const createEmptyMeta = (): RunewordMeta => ({
@@ -83,9 +84,8 @@ export const createEmptyMeta = (): RunewordMeta => ({
     randomRuneExchange: 0,
 })
 
-export const createEmptyItem = (tokenId: string) => ({
+export const createEmptyItem = (tokenId: string, type: ItemTypeID): Partial<Runeword> => ({
     tokenId,
-    details: {},
     branches: {},
     shorthand: '',
     mods: [],
@@ -93,5 +93,6 @@ export const createEmptyItem = (tokenId: string) => ({
     perfection: null,
     category: ItemsMainCategoriesType.WEAPONS,
     slots: [],
-    meta: createEmptyMeta()
+    meta: createEmptyMeta(),
+    type
 })

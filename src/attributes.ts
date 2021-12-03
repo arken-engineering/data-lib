@@ -1,4 +1,3 @@
-import { Rune } from "./runes"
 
 export const ItemAttributes: {[k: string]: ItemAttributeDefinition} = {
     HarvestYield: {
@@ -534,7 +533,7 @@ export type ItemAttributeDefinition = {
     max: number;
     min: number;
     map?: {
-      [k: string]: Rune
+      [k: string]: string | number
     };
 }
 

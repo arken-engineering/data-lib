@@ -25,9 +25,10 @@ export const ItemType = {
     Container: 23,
     Misc: 24,
     WristArmor: 24,
-}
+} as const
 
-export type ItemTypeID = number
+export type ItemType = keyof typeof ItemType
+export type ItemTypeID = typeof ItemType[ItemType]
 
 function spaceify(str: string) {
     return str.trim().split("").reduce((acc, c, i) => {
