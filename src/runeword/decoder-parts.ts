@@ -1,14 +1,14 @@
-import { ItemAttribute, ItemAttributes, ItemAttributesById } from "../attributes"
+import { ItemAttribute, ItemAttributeDefinition, ItemAttributes, ItemAttributesById } from "../attributes"
 import { ItemsMainCategoriesType } from "../categories"
 import { ClassIds } from "../classes"
-import { BranchKey, ItemBranch, itemData, Percentage } from "../data"
+import { Branches, ItemBranch, itemData, Percentage } from "../data"
 import { ActionMetadata, createEmptyActionMetadata } from "../metadata"
 import { ItemMod } from "../mods"
 import { ItemRarity, ItemRarityNameById, Rarity } from "../rarity"
 import { Rune } from "../runes"
 import { createEmptyMeta, Runeword, RunewordMeta } from "./runeword"
 
-type ModToAttrTransformer = (mod: ItemMod) => ItemAttribute
+type ModToAttrTransformer = (id: number, mod: ItemMod, branchAttributes: ItemAttributeDefinition[]) => ItemAttribute
 type MetadataProducer = (metadata: ActionMetadata, attribute: ItemAttribute, prevAttr?: ItemAttribute) => ActionMetadata
 type RunewordModifier = (attribute: ItemAttribute) => (item: Runeword) => Runeword
 type Merger = {
@@ -78,9 +78,11 @@ export function getModsFromToken(tokenId: string, id: number, modStart: number):
 }
 
 
-const mergeAttribute: ModToAttrTransformer = (mod) => {
+const mergeAttribute: ModToAttrTransformer = (id, mod, branchAttributes) => {
+    const attribute = itemData[ItemsMainCategoriesType.OTHER].find(i => i.id === id)!.attributes[mod.attributeId!]
     return ({
-        ...(itemData[ItemsMainCategoriesType.OTHER].find(i => i.id === mod.attributeId)!),
+        ...attribute,
+        ...branchAttributes.find(a => a.id === mod.attributeId ),
         ...ItemAttributesById[mod.attributeId!],
         ...mod,
         attributeId: mod.attributeId! // fix it for the type
@@ -93,7 +95,9 @@ const ModToMerger: {[k: keyof typeof ItemAttributes]: Merger} = {
         metadataProducer: (metadata, attr) => ({...metadata, harvestYield: metadata.harvestYield + attr.value})
     },
     [ItemAttributes.HarvestFeeToken.id]: {
-        metadataProducer: (metadata, attr, prevAttr) => ({...metadata, [attr.map![attr.value]]: prevAttr!.value})
+        metadataProducer: (metadata, attr, prevAttr) => {
+            
+            return ({...metadata, harvestFees: {...metadata.harvestFees, [attr.map![attr.value]]: prevAttr!.value}})}
     },
     [ItemAttributes.SendHarvestHiddenPool.id]: {
         metadataProducer: (metadata, attr) => ({...metadata, chanceToSendHarvestToHiddenPool: metadata.chanceToSendHarvestToHiddenPool + attr.value})
@@ -129,14 +133,15 @@ const ModToMerger: {[k: keyof typeof ItemAttributes]: Merger} = {
 }
 
 
-export function modToAttribute(mod: ItemMod): ItemAttribute | undefined {
+export function modToAttribute(runewordID: number, mod: ItemMod, branchAttribute: ItemAttributeDefinition[]): ItemAttribute | undefined {
     if(!mod.attributeId) return; 
-    return mergeAttribute(mod)
+    return mergeAttribute(runewordID, mod, branchAttribute)
 }
 
-export function getAttributes(mods: ItemMod[]): ItemAttribute[] {
+export function getAttributes(runewordID: number, mods: ItemMod[], branchAttribute: ItemAttributeDefinition[]): ItemAttribute[] {
     return mods.reduce<ItemAttribute[]>((acc, mod) => {
-        const attr = modToAttribute(mod)
+        const attr = modToAttribute(runewordID, mod, branchAttribute)
+        console.log("mod to attribute: ", attr)
         return attr ? [...acc, attr] : acc;
     }, [])
 }
@@ -183,6 +188,7 @@ export function createRunewordModsMerger(attributes: ItemAttribute[]): (r: Runew
     type Reducer = {actionMetadata: ActionMetadata, runewordModifier: (r: Runeword) => Runeword}
     return runeword => {
         const {actionMetadata, runewordModifier} = attributes.reduce<Reducer>((acc, attr, idx, attrs) => {
+            console.debug("current:", attr)
             let {actionMetadata, runewordModifier} = acc
             const prevAttr = idx > 0 ? attrs[idx-1] : undefined;
             const merger: Merger = ModToMerger[attr.id];
@@ -268,7 +274,7 @@ export function includeCommunityRequests(tokenId: string): (r: Runeword) => Rune
             return {...r, perfection: r.perfection! - 13}
         }
         if (tokenId === '100301201142040003200100520130200000000000000000000000000000000000000000001') {
-            const first: ItemBranch = r.branches[1 as BranchKey] as ItemBranch;
+            const first: ItemBranch = (r.branches as Branches)["1"] as ItemBranch;
             const [descHead, desc, descTail] = first.description as string[]
             const modified = {...first, description: [descHead, '"So long, I barely knew thee."', ...descTail]}
             return {...r, branches: {...r.branches, 1: first}}

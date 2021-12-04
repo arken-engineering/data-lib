@@ -1,5 +1,5 @@
 import { Runeword } from ".";
-import { ItemBranch } from "../data";
+import { Branches } from "../data";
 import { ItemTypeID } from "../type";
 import { buildRarity, createRunewordModsMerger, getAttributes, getModsFromToken, getPerfectionAndShorthand, includeCommunityRequests } from "./decoder-parts";
 import { createEmptyItem } from "./runeword";
@@ -11,17 +11,18 @@ export function decodeItem(tokenId: string) {
     const id = parseInt(tokenId.slice(4, 9));
     const type = version === 1 ? 0 : parseInt(tokenId.slice(9, 11)) as ItemTypeID;
     const modStart = version === 1 ? 9 : 11;
-    let runewordInTheBuild: Partial<Runeword> = createEmptyItem(tokenId, type);
+    let runewordInTheBuild: Partial<Runeword> = createEmptyItem(tokenId, id, type);
 
     const mods = getModsFromToken(tokenId, id, modStart)
-    const attributes = getAttributes(mods);
+    console.log(runewordInTheBuild)
+    const attributes = getAttributes(id, mods, (runewordInTheBuild.branches as Branches)["1"].attributes);
     runewordInTheBuild = {
         ...runewordInTheBuild,
         mods,
         attributes
     }
     const applyMetaAndMergeAttributes = createRunewordModsMerger(attributes);
-    const {perfection, shorthand} = getPerfectionAndShorthand(runewordInTheBuild.branches["1"]! as ItemBranch, attributes);
+    const {perfection, shorthand} = getPerfectionAndShorthand((runewordInTheBuild.branches as Branches)["1"], attributes);
     const rarity = buildRarity(attributes, 1);
     const applyCommunityRequests = includeCommunityRequests(tokenId)
     runewordInTheBuild = applyMetaAndMergeAttributes(runewordInTheBuild as Runeword)

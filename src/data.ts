@@ -47,11 +47,13 @@ export type RecipeRequirement = {
   quantity: number;
 }
 
+export type Branches = {
+  [k in BranchKey]: ItemBranch
+} 
+
 export type ItemDefinition<D = undefined> = {
   attributes: ItemAttribute[];
-  branches: {
-      [k in BranchKey]: ItemBranch
-  } | {};
+  branches: Branches | {};
   description?: string | string[];
   category: Category;
   icon: string;

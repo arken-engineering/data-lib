@@ -1,6 +1,6 @@
 import { ItemsMainCategoriesType } from "../categories";
 import { ClassIds } from "../classes";
-import { Percentage, RunewordDefinition } from "../data";
+import { itemData, Percentage, RunewordDefinition } from "../data";
 import { ItemMod } from "../mods";
 import { Rune } from "../runes";
 import { ItemTypeID } from "../type";
@@ -84,8 +84,7 @@ export const createEmptyMeta = (): RunewordMeta => ({
     randomRuneExchange: 0,
 })
 
-export const createEmptyItem = (tokenId: string, type: ItemTypeID): Partial<Runeword> => ({
-    tokenId,
+export const createEmptyItem = (tokenId: string, id: number, type: ItemTypeID): Partial<Runeword> => ({
     branches: {},
     shorthand: '',
     mods: [],
@@ -93,6 +92,10 @@ export const createEmptyItem = (tokenId: string, type: ItemTypeID): Partial<Rune
     perfection: null,
     category: ItemsMainCategoriesType.WEAPONS,
     slots: [],
+    type,
+    ...itemData[ItemsMainCategoriesType.OTHER].find((i) => i.id === id),
     meta: createEmptyMeta(),
-    type
+    tokenId,
+    id,
+    shortTokenId: `${tokenId.slice(0, 23)}...${tokenId.slice(-3)}`
 })
