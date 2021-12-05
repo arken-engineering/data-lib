@@ -14,8 +14,8 @@ export function decodeItem(tokenId: string) {
     let runewordInTheBuild: Partial<Runeword> = createEmptyItem(tokenId, id, type);
 
     const mods = getModsFromToken(tokenId, id, modStart)
-    console.log(runewordInTheBuild)
-    const attributes = getAttributes(id, mods, (runewordInTheBuild.branches as Branches)["1"].attributes);
+    
+    const attributes = getAttributes(id, mods, runewordInTheBuild.attributes || [], (runewordInTheBuild.branches as Branches)["1"].attributes);
     runewordInTheBuild = {
         ...runewordInTheBuild,
         mods,

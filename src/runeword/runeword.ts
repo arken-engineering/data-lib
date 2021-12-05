@@ -85,6 +85,8 @@ export const createEmptyMeta = (): RunewordMeta => ({
 })
 
 export const createEmptyItem = (tokenId: string, id: number, type: ItemTypeID): Partial<Runeword> => ({
+    tokenId,
+    id,
     branches: {},
     shorthand: '',
     mods: [],
@@ -95,7 +97,5 @@ export const createEmptyItem = (tokenId: string, id: number, type: ItemTypeID): 
     type,
     ...itemData[ItemsMainCategoriesType.OTHER].find((i) => i.id === id),
     meta: createEmptyMeta(),
-    tokenId,
-    id,
     shortTokenId: `${tokenId.slice(0, 23)}...${tokenId.slice(-3)}`
 })

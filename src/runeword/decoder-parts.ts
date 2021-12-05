@@ -8,7 +8,7 @@ import { ItemRarity, ItemRarityNameById, Rarity } from "../rarity"
 import { Rune } from "../runes"
 import { createEmptyMeta, Runeword, RunewordMeta } from "./runeword"
 
-type ModToAttrTransformer = (id: number, mod: ItemMod, branchAttributes: ItemAttributeDefinition[]) => ItemAttribute
+type ModToAttrTransformer = (id: number, mod: ItemMod, branchAttributes: ItemAttributeDefinition[], attribute?: ItemAttribute) => ItemAttribute
 type MetadataProducer = (metadata: ActionMetadata, attribute: ItemAttribute, prevAttr?: ItemAttribute) => ActionMetadata
 type RunewordModifier = (attribute: ItemAttribute) => (item: Runeword) => Runeword
 type Merger = {
@@ -78,10 +78,11 @@ export function getModsFromToken(tokenId: string, id: number, modStart: number):
 }
 
 
-const mergeAttribute: ModToAttrTransformer = (id, mod, branchAttributes) => {
-    const attribute = itemData[ItemsMainCategoriesType.OTHER].find(i => i.id === id)!.attributes[mod.attributeId!]
+const mergeAttribute: ModToAttrTransformer = (id, mod, branchAttributes, attr) => {
+    const basicAttribute = itemData[ItemsMainCategoriesType.OTHER].find(i => i.id === id)!.attributes[mod.attributeId!]
     return ({
-        ...attribute,
+        ...(attr || {}),
+        ...basicAttribute,
         ...branchAttributes.find(a => a.id === mod.attributeId ),
         ...ItemAttributesById[mod.attributeId!],
         ...mod,
@@ -133,15 +134,14 @@ const ModToMerger: {[k: keyof typeof ItemAttributes]: Merger} = {
 }
 
 
-export function modToAttribute(runewordID: number, mod: ItemMod, branchAttribute: ItemAttributeDefinition[]): ItemAttribute | undefined {
+export function modToAttribute(runewordID: number, mod: ItemMod, branchAttribute: ItemAttributeDefinition[], attribute?: ItemAttribute): ItemAttribute | undefined {
     if(!mod.attributeId) return; 
-    return mergeAttribute(runewordID, mod, branchAttribute)
+    return mergeAttribute(runewordID, mod, branchAttribute, attribute)
 }
 
-export function getAttributes(runewordID: number, mods: ItemMod[], branchAttribute: ItemAttributeDefinition[]): ItemAttribute[] {
+export function getAttributes(runewordID: number, mods: ItemMod[], itemIntrinsicAttributes: ItemAttribute[], branchAttribute: ItemAttributeDefinition[]): ItemAttribute[] {
     return mods.reduce<ItemAttribute[]>((acc, mod) => {
-        const attr = modToAttribute(runewordID, mod, branchAttribute)
-        console.log("mod to attribute: ", attr)
+        const attr = modToAttribute(runewordID, mod, branchAttribute, itemIntrinsicAttributes.find(a => a.id === mod.attributeId))
         return attr ? [...acc, attr] : acc;
     }, [])
 }
