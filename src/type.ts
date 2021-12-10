@@ -38,7 +38,7 @@ function spaceify(str: string) {
     }, "")
 }
 
-export const ItemTypeToText = Object.entries(ItemType).reduce((acc, [k, v]) => ({[v]: spaceify(k)}), {});
+export const ItemTypeToText = Object.entries(ItemType).reduce((acc, [k, v]) => ({...acc, [v]: k === "LegArmor" ? "Leggings" : spaceify(k)}), {});
 /*
 export const ItemTypeToText = {
     [ItemType.None]: 'None',

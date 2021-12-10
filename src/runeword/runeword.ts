@@ -52,11 +52,11 @@ export type RunewordMeta = {
         [k in Rune]: number
     } | {};
     harvestYield: number;
-    unstakeLocked: boolean,
-    feeReduction: number;
-    classRequired: ClassIds,
-    worldstoneShardChance: Percentage, // number? canit be higher than 100 ?
-    randomRuneExchange: number // is there a better type?
+    unstakeLocked?: boolean,
+    feeReduction?: number;
+    classRequired?: ClassIds,
+    worldstoneShardChance?: Percentage, // number? canit be higher than 100 ?
+    randomRuneExchange?: number // is there a better type?
 }
 
 export type Runeword = RunewordDefinition & {
@@ -77,11 +77,7 @@ export const createEmptyMeta = (): RunewordMeta => ({
     chanceToSendHarvestToHiddenPool: 0,
     chanceToLoseHarvest: 0,
     harvestBurn: 0,
-    feeReduction: 0,
-    unstakeLocked: false,
-    classRequired: 0,
-    worldstoneShardChance: 0,
-    randomRuneExchange: 0,
+    
 })
 
 export const createEmptyItem = (tokenId: string, id: number, type: ItemTypeID): Partial<Runeword> => ({
@@ -94,8 +90,8 @@ export const createEmptyItem = (tokenId: string, id: number, type: ItemTypeID): 
     perfection: null,
     category: ItemsMainCategoriesType.WEAPONS,
     slots: [],
-    type,
     ...itemData[ItemsMainCategoriesType.OTHER].find((i) => i.id === id),
+    type,
     meta: createEmptyMeta(),
     shortTokenId: `${tokenId.slice(0, 23)}...${tokenId.slice(-3)}`
 })

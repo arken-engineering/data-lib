@@ -8,7 +8,7 @@ import { ItemRarity, ItemRarityNameById, Rarity } from "../rarity"
 import { Rune } from "../runes"
 import { createEmptyMeta, Runeword, RunewordMeta } from "./runeword"
 
-type ModToAttrTransformer = (id: number, mod: ItemMod, branchAttributes: ItemAttributeDefinition[], attribute?: ItemAttribute) => ItemAttribute
+type ModToAttrTransformer = (id: number, mod: ItemMod, branchAttributes: ItemAttributeDefinition[], index: number, attribute?: ItemAttribute) => ItemAttribute | undefined
 type MetadataProducer = (metadata: ActionMetadata, attribute: ItemAttribute, prevAttr?: ItemAttribute) => ActionMetadata
 type RunewordModifier = (attribute: ItemAttribute) => (item: Runeword) => Runeword
 type Merger = {
@@ -17,7 +17,7 @@ type Merger = {
 }
 
 
-export function getModsFromToken(tokenId: string, id: number, modStart: number): ItemMod[] {
+export function getModsFromToken(tokenId: string, id: number, modStart: number, branchAttributes: ItemAttributeDefinition[]): ItemMod[] {
     
     let mods: ItemMod[] = []
 
@@ -66,10 +66,16 @@ export function getModsFromToken(tokenId: string, id: number, modStart: number):
             mods[0].attributeId = ItemAttributes.HarvestYield.id
             mods[1].attributeId = ItemAttributes.HarvestBurn.id
             mods[2].attributeId = ItemAttributes.FindShard.id
+            if(branchAttributes[2].value !== undefined){
+                mods[2].value = branchAttributes[2].value!
+            }
             if (mods[2].value === 0) mods[2].value = 100
             break;
         case 4:
             mods[0].attributeId = ItemAttributes.FindShard.id
+            if(branchAttributes[0].value !== undefined){
+                mods[0].value = branchAttributes[0].value!
+            }
             if (mods[0].value === 0) mods[0].value = 100
             break;
     }
@@ -78,16 +84,20 @@ export function getModsFromToken(tokenId: string, id: number, modStart: number):
 }
 
 
-const mergeAttribute: ModToAttrTransformer = (id, mod, branchAttributes, attr) => {
+const mergeAttribute: ModToAttrTransformer = (id, mod, branchAttributes, index, attr) => {
     const basicAttribute = itemData[ItemsMainCategoriesType.OTHER].find(i => i.id === id)!.attributes[mod.attributeId!]
-    return ({
-        ...(attr || {}),
-        ...basicAttribute,
-        ...branchAttributes.find(a => a.id === mod.attributeId ),
-        ...ItemAttributesById[mod.attributeId!],
-        ...mod,
-        attributeId: mod.attributeId! // fix it for the type
-    })
+    const ba = branchAttributes[index]
+    if(mod.attributeId! > 0 && ItemAttributesById[mod.attributeId!]) {
+        return ({
+            ...(attr || {}),
+            ...(basicAttribute || {}),
+            ...ItemAttributesById[mod.attributeId!],
+            ...(ba || {}),
+            ...mod,
+            attributeId: mod.attributeId! // fix it for the type
+        })
+    } else if(ba) return {...ba} as ItemAttribute
+    else return;
 }
 
 
@@ -97,7 +107,7 @@ const ModToMerger: {[k: keyof typeof ItemAttributes]: Merger} = {
     },
     [ItemAttributes.HarvestFeeToken.id]: {
         metadataProducer: (metadata, attr, prevAttr) => {
-            
+            if(!attr.map) return metadata
             return ({...metadata, harvestFees: {...metadata.harvestFees, [attr.map![attr.value]]: prevAttr!.value}})}
     },
     [ItemAttributes.SendHarvestHiddenPool.id]: {
@@ -111,7 +121,7 @@ const ModToMerger: {[k: keyof typeof ItemAttributes]: Merger} = {
     },
     [ItemAttributes.FindShard.id]: {
         metadataProducer: (metadata, attr) => {
-            return ({...metadata, worldstoneShardChance: attr.value || attr.value})
+            return ({...metadata, worldstoneShardChance: metadata.worldstoneShardChance + attr.value})
         }
 
     }, //TODO can attr not have value here?
@@ -134,16 +144,17 @@ const ModToMerger: {[k: keyof typeof ItemAttributes]: Merger} = {
 }
 
 
-export function modToAttribute(runewordID: number, mod: ItemMod, branchAttribute: ItemAttributeDefinition[], attribute?: ItemAttribute): ItemAttribute | undefined {
-    if(!mod.attributeId) return; 
-    return mergeAttribute(runewordID, mod, branchAttribute, attribute)
+export function modToAttribute(runewordID: number, mod: ItemMod, branchAttribute: ItemAttributeDefinition[], index: number, attribute?: ItemAttribute): ItemAttribute | undefined {
+    return mergeAttribute(runewordID, mod, branchAttribute, index, attribute)
 }
 
 export function getAttributes(runewordID: number, mods: ItemMod[], itemIntrinsicAttributes: ItemAttribute[], branchAttribute: ItemAttributeDefinition[]): ItemAttribute[] {
-    return mods.reduce<ItemAttribute[]>((acc, mod) => {
-        const attr = modToAttribute(runewordID, mod, branchAttribute, itemIntrinsicAttributes.find(a => a.id === mod.attributeId))
+    const attrs =  mods.reduce<ItemAttribute[]>((acc, mod, idx) => {
+        const attr = modToAttribute(runewordID, mod, branchAttribute, idx, itemIntrinsicAttributes.find(a => a.id === mod.attributeId))
+        
         return attr ? [...acc, attr] : acc;
     }, [])
+    return attrs;
 }
 
 function actionMetaToRunewordMeta(actionMetadata: ActionMetadata): RunewordMeta {
@@ -188,14 +199,15 @@ export function createRunewordModsMerger(attributes: ItemAttribute[]): (r: Runew
     type Reducer = {actionMetadata: ActionMetadata, runewordModifier: (r: Runeword) => Runeword}
     return runeword => {
         const {actionMetadata, runewordModifier} = attributes.reduce<Reducer>((acc, attr, idx, attrs) => {
-            console.debug("current:", attr)
-            let {actionMetadata, runewordModifier} = acc
+            const {actionMetadata, runewordModifier} = acc
+            let am = {...actionMetadata}
+            let rm = runewordModifier
             const prevAttr = idx > 0 ? attrs[idx-1] : undefined;
-            const merger: Merger = ModToMerger[attr.id];
+            const merger: Merger = ModToMerger[attr.attributeId];
             if(!merger) return acc;
-            if(merger.metadataProducer) actionMetadata = merger.metadataProducer(actionMetadata, attr, prevAttr)
-            if(merger.runewordModifier) runewordModifier = (r: Runeword) => merger.runewordModifier!(attr)(runewordModifier(r))
-            return {actionMetadata, runewordModifier}
+            if(merger.metadataProducer) am = merger.metadataProducer(actionMetadata, attr, prevAttr)
+            if(merger.runewordModifier) rm = (r: Runeword) => merger.runewordModifier!(attr)(runewordModifier(r))
+            return {actionMetadata: am, runewordModifier: rm}
             
         }, {actionMetadata: createEmptyActionMetadata(), runewordModifier: r => r})
         return runewordModifier({...runeword, meta: actionMetaToRunewordMeta(actionMetadata)})
@@ -254,8 +266,10 @@ export function getPerfectionAndShorthand(branch: ItemBranch, attributes: ItemAt
 }
 
 export function buildRarity(attributes: ItemAttribute[], perfection: number): Rarity | undefined {
-    if (attributes.find((a) => a.id === 40)?.value) {
-        return ItemRarity[ItemRarityNameById[attributes.find((a) => a.id === 40)?.value || 5]]
+    const inducedRarity = attributes.find((a) => a.id === ItemAttributes.Rarity.id)?.value
+    
+    if (inducedRarity) {
+        return ItemRarity[ItemRarityNameById[inducedRarity || 5]]
     } else if (perfection === 1) {
         return ItemRarity.Mythic
     } else if (perfection >= 0.9) {
@@ -275,8 +289,8 @@ export function includeCommunityRequests(tokenId: string): (r: Runeword) => Rune
         }
         if (tokenId === '100301201142040003200100520130200000000000000000000000000000000000000000001') {
             const first: ItemBranch = (r.branches as Branches)["1"] as ItemBranch;
-            const [descHead, desc, descTail] = first.description as string[]
-            const modified = {...first, description: [descHead, '"So long, I barely knew thee."', ...descTail]}
+            const [descHead, desc, ...descTail] = first.description as string[]
+            const modified = {...first, description: [descHead, '"So long, I barely knew thee."', ...(descTail|| [])]}
             return {...r, branches: {...r.branches, 1: first}}
         }
         return r;
